@@ -43,5 +43,5 @@
   description: Tied to roadmap milestones
 
 - name: breaking-change
-  color: 000000
+  color: 1D1F23
   description: Behavioral or compatibility change that may require migration
