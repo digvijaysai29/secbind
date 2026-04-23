@@ -1,0 +1,27 @@
+[package]
+name = "secbind-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "secbind"
+path = "src/main.rs"
+
+[dependencies]
+secbind-core = { path = "../secbind-core" }
+clap         = { version = "4", features = ["derive"] }
+base64       = "0.22"
+serde_json   = "1"
+zeroize      = { version = "1.7", features = ["derive"] }
+chrono       = "0.4"
+
+# keyring backends are platform-gated: apple-native pulls in security-framework
+# which is Apple-only and will not compile on Linux or Windows.
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", default-features = false, features = ["sync-secret-service", "crypto-rust"] }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", default-features = false, features = ["windows-native"] }

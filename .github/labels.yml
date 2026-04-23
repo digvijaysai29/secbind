@@ -1,0 +1,47 @@
+- name: needs-triage
+  color: FBCA04
+  description: New issue awaiting maintainer triage
+
+- name: bug
+  color: D73A4A
+  description: Something is broken
+
+- name: enhancement
+  color: A2EEEF
+  description: New feature or behavior improvement
+
+- name: security
+  color: B60205
+  description: Security-related concern or hardening work
+
+- name: good first issue
+  color: 7057FF
+  description: Small, well-scoped task suitable for first-time contributors
+
+- name: help wanted
+  color: 008672
+  description: Maintainers welcome community help on this issue
+
+- name: rust
+  color: DEA584
+  description: Rust CLI/core work
+
+- name: node-sdk
+  color: C5DEF5
+  description: Node SDK work
+
+- name: documentation
+  color: 0075CA
+  description: Documentation improvements
+
+- name: tests
+  color: 5319E7
+  description: Test coverage or test infrastructure work
+
+- name: roadmap
+  color: 0E8A16
+  description: Tied to roadmap milestones
+
+- name: breaking-change
+  color: 000000
+  description: Behavioral or compatibility change that may require migration

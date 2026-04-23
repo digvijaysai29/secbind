@@ -1,0 +1,18 @@
+# Rust
+/target/
+**/*.rs.bk
+
+# Node
+sdk/node/node_modules/
+sdk/node/dist/
+npm-debug.log*
+
+# Secrets and local env
+.secenv
+.env
+.env.local
+
+# OS/editor artifacts
+.DS_Store
+*.swp
+*.swo

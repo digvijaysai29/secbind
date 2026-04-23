@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/secbind-core", "crates/secbind-cli"]
+resolver = "2"

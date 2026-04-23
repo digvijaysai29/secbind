@@ -1,0 +1,36 @@
+name: Security concern (non-sensitive)
+description: Report a security concern that is safe to discuss publicly
+title: "[security] "
+labels:
+  - security
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include exploit details or secrets here.
+        For vulnerabilities, use private reporting as documented in SECURITY.md.
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I confirm this report contains no exploit details or secret material.
+          required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: High-level concern
+      description: Describe the area of concern at a high level.
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Potential impact
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Suggested mitigation
