@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 
 mod cmd {
     pub mod audit;
+    pub mod dashboard;
     pub mod export;
     pub mod init;
     pub mod reveal;
@@ -11,7 +12,11 @@ mod cmd {
 mod config;
 
 #[derive(Parser)]
-#[command(name = "secbind", version, about = "Post-quantum context-bound secrets manager")]
+#[command(
+    name = "secbind",
+    version,
+    about = "Post-quantum context-bound secrets manager"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -25,6 +30,7 @@ enum Commands {
     Run(cmd::run::RunArgs),
     Audit(cmd::audit::AuditArgs),
     Export(cmd::export::ExportArgs),
+    Dashboard(cmd::dashboard::DashboardArgs),
 }
 
 fn main() {
@@ -36,6 +42,7 @@ fn main() {
         Commands::Run(args) => cmd::run::run(args),
         Commands::Audit(args) => cmd::audit::run(args),
         Commands::Export(args) => cmd::export::run(args),
+        Commands::Dashboard(args) => cmd::dashboard::run(args),
     };
     if let Err(e) = result {
         eprintln!("Error: {}", e);
