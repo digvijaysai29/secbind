@@ -51,7 +51,7 @@ cd sdk/node && npm install && npm run build
 secbind init --env prod --ttl-hours 720
 
 # 2. Seal a secret
-secbind seal -k DATABASE_URL -v "postgres://user:pass@db/prod" --env prod
+printf %s "postgres://user:pass@db/prod" | secbind seal -k DATABASE_URL --value-stdin --env prod
 
 # 3. Run your app with secrets injected as environment variables
 secbind run --env prod -- node server.js
@@ -67,7 +67,7 @@ DATABASE_URL=postgres://user:pass@db/prod
 After:
 ```bash
 # .env is deleted; secrets live in .secenv (safe to git-commit)
-secbind seal -k DATABASE_URL -v "postgres://user:pass@db/prod" --env prod
+printf %s "postgres://user:pass@db/prod" | secbind seal -k DATABASE_URL --value-stdin --env prod
 ```
 
 One-line diff in your app:
@@ -90,7 +90,7 @@ re-seal secrets using `secbind seal`.
 ## How it Works
 
 ```
-secbind seal -k FOO -v "hello"
+printf %s "hello" | secbind seal -k FOO --value-stdin
   │
   ├─ Capture RuntimeContext
   │     machine_id:   IORegistry UUID (macOS) / /etc/machine-id (Linux)
