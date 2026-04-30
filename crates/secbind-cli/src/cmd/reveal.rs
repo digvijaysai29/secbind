@@ -23,12 +23,12 @@ pub fn run(args: RevealArgs) -> Result<(), Box<dyn std::error::Error>> {
 
     file.verify_signature()?;
 
+    let ctx = RuntimeContext::capture(&args.env)?;
+    file.check_antigens(&ctx)?;
+
     let entry = Entry::new(&keyring_service(&args.env), KEYRING_USER)?;
     let sk_b64 = entry.get_password()?;
     let mut combined_sk = STANDARD.decode(&sk_b64)?;
-
-    let ctx = RuntimeContext::capture(&args.env)?;
-    file.check_antigens(&ctx)?;
 
     let sealed = file
         .secrets
