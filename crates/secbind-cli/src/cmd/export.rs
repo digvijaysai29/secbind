@@ -5,7 +5,9 @@ use secbind_core::{reveal, RuntimeContext, SecBindError, SecEnvFile};
 use std::path::PathBuf;
 use zeroize::Zeroize;
 
-use crate::config::{default_secenv_path, keyring_service, KEYRING_USER};
+use crate::config::{
+    default_secenv_path, keyring_service, COMBINED_SK_LEN, KEM_SK_LEN, KEYRING_USER,
+};
 
 #[derive(Args)]
 pub struct ExportArgs {
@@ -27,7 +29,15 @@ pub fn run(args: ExportArgs) -> Result<(), Box<dyn std::error::Error>> {
     let entry = Entry::new(&keyring_service(&args.env), KEYRING_USER)?;
     let sk_b64 = entry.get_password()?;
     let mut combined_sk = STANDARD.decode(&sk_b64)?;
-    let kem_sk = combined_sk[..2400].to_vec();
+    if combined_sk.len() != COMBINED_SK_LEN {
+        return Err(SecBindError::SerializationError(format!(
+            "invalid keyring payload length: expected {}, got {}",
+            COMBINED_SK_LEN,
+            combined_sk.len()
+        ))
+        .into());
+    }
+    let kem_sk = combined_sk[..KEM_SK_LEN].to_vec();
     combined_sk.zeroize();
 
     let fp = ctx.digest();
