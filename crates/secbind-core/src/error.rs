@@ -24,6 +24,9 @@ pub enum SecBindError {
     #[error("serialization error: {0}")]
     SerializationError(String),
 
+    #[error("unsupported envelope version: {0}")]
+    UnsupportedEnvelopeVersion(String),
+
     #[error(transparent)]
     IoError(#[from] std::io::Error),
 

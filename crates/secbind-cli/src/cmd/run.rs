@@ -1,13 +1,15 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use clap::Args;
 use keyring::Entry;
-use secbind_core::{reveal, RuntimeContext, SecBindError, SecEnvFile};
+use secbind_core::{reveal_for_version, RuntimeContext, SecBindError, SecEnvFile};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::Command;
 use zeroize::Zeroize;
 
-use crate::config::{default_secenv_path, keyring_service, KEYRING_USER};
+use crate::config::{
+    default_secenv_path, keyring_service, split_combined_sk_for_version, KEYRING_USER,
+};
 
 #[derive(Args)]
 pub struct RunArgs {
@@ -22,6 +24,7 @@ pub struct RunArgs {
 pub fn run(args: RunArgs) -> Result<(), Box<dyn std::error::Error>> {
     let path = default_secenv_path(args.file);
     let file = SecEnvFile::load(&path)?;
+    let version = file.envelope_version()?;
 
     file.verify_signature()?;
 
@@ -31,14 +34,15 @@ pub fn run(args: RunArgs) -> Result<(), Box<dyn std::error::Error>> {
     let entry = Entry::new(&keyring_service(&args.env), KEYRING_USER)?;
     let sk_b64 = entry.get_password()?;
     let mut combined_sk = STANDARD.decode(&sk_b64)?;
-    let kem_sk = combined_sk[..2400].to_vec();
+    let (kem_sk, _) = split_combined_sk_for_version(&combined_sk, version)?;
+    let kem_sk = kem_sk.to_vec();
     combined_sk.zeroize();
 
     let fp = ctx.digest();
     let mut env_map: HashMap<String, String> = HashMap::new();
 
     for (key, sealed) in &file.secrets {
-        let plaintext = reveal(sealed, &kem_sk, &fp)?;
+        let plaintext = reveal_for_version(version, sealed, &kem_sk, &fp)?;
         let value = String::from_utf8(plaintext)
             .map_err(|e| SecBindError::SerializationError(e.to_string()))?;
         env_map.insert(key.clone(), value);
