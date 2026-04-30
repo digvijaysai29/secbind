@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use clap::Args;
 use keyring::Entry;
-use secbind_core::SecEnvFile;
+use secbind_core::{kem_secret_key_len, SecEnvFile};
 use std::path::PathBuf;
 use zeroize::Zeroize;
 
@@ -21,9 +21,8 @@ pub fn run(args: InitArgs) -> Result<(), Box<dyn std::error::Error>> {
     let output_path = default_secenv_path(args.output);
     let (mut file, mut combined_sk) = SecEnvFile::new(&args.env, args.ttl_hours);
 
-    // Sign the empty envelope now so `seal` can verify it before adding the first secret.
-    // combined_sk[2400..] is the DSA secret key; sign() borrows it immutably then releases.
-    file.sign(&combined_sk[2400..])?;
+    let kem_len = kem_secret_key_len();
+    file.sign(&combined_sk[kem_len..])?;
 
     let entry = Entry::new(&keyring_service(&args.env), KEYRING_USER)?;
     entry.set_password(&STANDARD.encode(&combined_sk))?;

@@ -4,7 +4,7 @@ use chacha20poly1305::{
     ChaCha20Poly1305, Key, Nonce,
 };
 use hkdf::Hkdf;
-use pqcrypto_kyber::kyber768;
+use pqcrypto_mlkem::mlkem768;
 use pqcrypto_traits::kem::{Ciphertext, PublicKey, SecretKey, SharedSecret};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -31,10 +31,10 @@ pub fn seal(
     ml_kem_pk_bytes: &[u8],
     fingerprint: &[u8],
 ) -> Result<SealedSecret, SecBindError> {
-    let pk = kyber768::PublicKey::from_bytes(ml_kem_pk_bytes)
+    let pk = mlkem768::PublicKey::from_bytes(ml_kem_pk_bytes)
         .map_err(|e| SecBindError::KemError(e.to_string()))?;
 
-    let (shared_secret, kem_ct) = kyber768::encapsulate(&pk);
+    let (shared_secret, kem_ct) = mlkem768::encapsulate(&pk);
 
     let hk = Hkdf::<Sha3_512>::new(Some(fingerprint), shared_secret.as_bytes());
     let mut key_bytes = [0u8; 32];
@@ -78,12 +78,12 @@ pub fn reveal(
         ));
     }
 
-    let sk = kyber768::SecretKey::from_bytes(ml_kem_sk_bytes)
+    let sk = mlkem768::SecretKey::from_bytes(ml_kem_sk_bytes)
         .map_err(|e| SecBindError::KemError(e.to_string()))?;
-    let kem_ct = kyber768::Ciphertext::from_bytes(&kem_ct_bytes)
+    let kem_ct = mlkem768::Ciphertext::from_bytes(&kem_ct_bytes)
         .map_err(|e| SecBindError::KemError(e.to_string()))?;
 
-    let shared_secret = kyber768::decapsulate(&kem_ct, &sk);
+    let shared_secret = mlkem768::decapsulate(&kem_ct, &sk);
 
     let hk = Hkdf::<Sha3_512>::new(Some(fingerprint), shared_secret.as_bytes());
     let mut key_bytes = [0u8; 32];

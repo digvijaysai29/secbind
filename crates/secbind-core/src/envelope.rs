@@ -3,7 +3,7 @@ use std::path::Path;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use chrono::{DateTime, Duration, Utc};
-use pqcrypto_dilithium::dilithium3;
+use pqcrypto_mldsa::mldsa65;
 use pqcrypto_traits::sign::{DetachedSignature, PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -35,8 +35,8 @@ impl SecEnvFile {
     pub fn new(env_label: &str, ttl_hours: Option<u64>) -> (SecEnvFile, Vec<u8>) {
         use pqcrypto_traits::kem::{PublicKey as KemPk, SecretKey as KemSk};
 
-        let (kem_pk, kem_sk) = pqcrypto_kyber::kyber768::keypair();
-        let (dsa_vk, dsa_sk) = dilithium3::keypair();
+        let (kem_pk, kem_sk) = pqcrypto_mlkem::mlkem768::keypair();
+        let (dsa_vk, dsa_sk) = mldsa65::keypair();
 
         let not_after = ttl_hours.map(|h| Utc::now() + Duration::hours(h as i64));
 
@@ -46,7 +46,7 @@ impl SecEnvFile {
             ..Default::default()
         };
 
-        let mut combined_sk = Vec::with_capacity(2400 + 4032);
+        let mut combined_sk = Vec::with_capacity(kem_sk.as_bytes().len() + dsa_sk.as_bytes().len());
         combined_sk.extend_from_slice(kem_sk.as_bytes());
         combined_sk.extend_from_slice(dsa_sk.as_bytes());
 
@@ -87,10 +87,10 @@ impl SecEnvFile {
     }
 
     pub fn sign(&mut self, dsa_sk_bytes: &[u8]) -> Result<(), SecBindError> {
-        let sk = dilithium3::SecretKey::from_bytes(dsa_sk_bytes)
+        let sk = mldsa65::SecretKey::from_bytes(dsa_sk_bytes)
             .map_err(|e| SecBindError::KemError(e.to_string()))?;
         let msg = self.signable_bytes()?;
-        let sig = dilithium3::detached_sign(&msg, &sk);
+        let sig = mldsa65::detached_sign(&msg, &sk);
         self.envelope_signature = Some(STANDARD.encode(sig.as_bytes()));
         Ok(())
     }
@@ -107,14 +107,14 @@ impl SecEnvFile {
             .decode(&self.verify_key)
             .map_err(|_| SecBindError::SignatureInvalid)?;
 
-        let sig = dilithium3::DetachedSignature::from_bytes(&sig_bytes)
+        let sig = mldsa65::DetachedSignature::from_bytes(&sig_bytes)
             .map_err(|_| SecBindError::SignatureInvalid)?;
-        let vk = dilithium3::PublicKey::from_bytes(&vk_bytes)
+        let vk = mldsa65::PublicKey::from_bytes(&vk_bytes)
             .map_err(|_| SecBindError::SignatureInvalid)?;
 
         let msg = self.signable_bytes()?;
 
-        dilithium3::verify_detached_signature(&sig, &msg, &vk)
+        mldsa65::verify_detached_signature(&sig, &msg, &vk)
             .map_err(|_| SecBindError::SignatureInvalid)
     }
 
@@ -130,10 +130,7 @@ impl SecEnvFile {
         if let Some(env) = &self.antigens.environment {
             if env != &ctx.env_label {
                 return Err(SecBindError::AntigenViolation {
-                    antigen: format!(
-                        "environment: expected '{}', got '{}'",
-                        env, ctx.env_label
-                    ),
+                    antigen: format!("environment: expected '{}', got '{}'", env, ctx.env_label),
                 });
             }
         }
@@ -158,8 +155,7 @@ impl SecEnvFile {
 
     pub fn load(path: &Path) -> Result<Self, SecBindError> {
         let content = std::fs::read_to_string(path)?;
-        serde_json::from_str(&content)
-            .map_err(|e| SecBindError::SerializationError(e.to_string()))
+        serde_json::from_str(&content).map_err(|e| SecBindError::SerializationError(e.to_string()))
     }
 
     pub fn save(&self, path: &Path) -> Result<(), SecBindError> {

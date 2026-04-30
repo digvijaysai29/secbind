@@ -5,7 +5,7 @@ use secbind_core::{reveal, RuntimeContext, SecBindError, SecEnvFile};
 use std::path::PathBuf;
 use zeroize::Zeroize;
 
-use crate::config::{default_secenv_path, keyring_service, KEYRING_USER};
+use crate::config::{default_secenv_path, keyring_service, split_combined_sk, KEYRING_USER};
 
 #[derive(Args)]
 pub struct ExportArgs {
@@ -27,7 +27,8 @@ pub fn run(args: ExportArgs) -> Result<(), Box<dyn std::error::Error>> {
     let entry = Entry::new(&keyring_service(&args.env), KEYRING_USER)?;
     let sk_b64 = entry.get_password()?;
     let mut combined_sk = STANDARD.decode(&sk_b64)?;
-    let kem_sk = combined_sk[..2400].to_vec();
+    let (kem_sk, _) = split_combined_sk(&combined_sk)?;
+    let kem_sk = kem_sk.to_vec();
     combined_sk.zeroize();
 
     let fp = ctx.digest();
