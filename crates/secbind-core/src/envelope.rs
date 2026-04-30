@@ -3,6 +3,7 @@ use std::path::Path;
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use chrono::{DateTime, Duration, Utc};
+use ipnet::IpNet;
 use pqcrypto_dilithium::dilithium3;
 use pqcrypto_traits::sign::{DetachedSignature, PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
@@ -135,6 +136,41 @@ impl SecEnvFile {
                         env, ctx.env_label
                     ),
                 });
+            }
+        }
+
+        if let Some(cidr) = &self.antigens.allowed_cidr {
+            let net = cidr
+                .parse::<IpNet>()
+                .map_err(|_| SecBindError::AntigenViolation {
+                    antigen: format!("allowed_cidr is invalid: '{}'", cidr),
+                })?;
+            let ip = ctx.client_ip.ok_or_else(|| SecBindError::AntigenViolation {
+                antigen: "allowed_cidr set but SECBIND_CLIENT_IP missing".to_string(),
+            })?;
+            if !net.contains(&ip) {
+                return Err(SecBindError::AntigenViolation {
+                    antigen: format!("allowed_cidr: '{}' does not include '{}'", cidr, ip),
+                });
+            }
+        }
+
+        for (tag, expected_value) in &self.antigens.custom_tags {
+            match ctx.custom_tags.get(tag) {
+                Some(actual_value) if actual_value == expected_value => {}
+                Some(actual_value) => {
+                    return Err(SecBindError::AntigenViolation {
+                        antigen: format!(
+                            "custom_tag '{}': expected '{}', got '{}'",
+                            tag, expected_value, actual_value
+                        ),
+                    })
+                }
+                None => {
+                    return Err(SecBindError::AntigenViolation {
+                        antigen: format!("custom_tag '{}': missing", tag),
+                    })
+                }
             }
         }
 

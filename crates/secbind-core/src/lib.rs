@@ -14,6 +14,8 @@ mod tests {
     use super::*;
     use base64::{engine::general_purpose::STANDARD, Engine as _};
     use chrono::Utc;
+    use std::collections::HashMap;
+    use std::net::{IpAddr, Ipv4Addr};
 
     fn make_ctx(env_label: &str) -> RuntimeContext {
         RuntimeContext {
@@ -21,6 +23,8 @@ mod tests {
             binary_hash: "aabbccddeeff".to_string(),
             env_label: env_label.to_string(),
             binding_tag: None,
+            client_ip: None,
+            custom_tags: HashMap::new(),
         }
     }
 
@@ -64,6 +68,40 @@ mod tests {
     fn antigen_wrong_environment() {
         let ctx = make_ctx("production");
         let (file, _) = SecEnvFile::new("staging", None);
+        let result = file.check_antigens(&ctx);
+        assert!(matches!(result, Err(SecBindError::AntigenViolation { .. })));
+    }
+
+    #[test]
+    fn antigen_allowed_cidr_enforced() {
+        let mut ctx = make_ctx("test");
+        ctx.client_ip = Some(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 7)));
+
+        let (mut file, _) = SecEnvFile::new("test", None);
+        file.antigens.allowed_cidr = Some("10.0.0.0/24".to_string());
+
+        assert!(file.check_antigens(&ctx).is_ok());
+
+        file.antigens.allowed_cidr = Some("10.0.1.0/24".to_string());
+        let result = file.check_antigens(&ctx);
+        assert!(matches!(result, Err(SecBindError::AntigenViolation { .. })));
+    }
+
+    #[test]
+    fn antigen_custom_tags_enforced() {
+        let mut ctx = make_ctx("test");
+        ctx.custom_tags
+            .insert("DEPLOYMENT".to_string(), "blue".to_string());
+
+        let (mut file, _) = SecEnvFile::new("test", None);
+        file.antigens
+            .custom_tags
+            .insert("DEPLOYMENT".to_string(), "blue".to_string());
+        assert!(file.check_antigens(&ctx).is_ok());
+
+        file.antigens
+            .custom_tags
+            .insert("DEPLOYMENT".to_string(), "green".to_string());
         let result = file.check_antigens(&ctx);
         assert!(matches!(result, Err(SecBindError::AntigenViolation { .. })));
     }

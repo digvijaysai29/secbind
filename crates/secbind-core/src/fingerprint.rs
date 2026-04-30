@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::net::IpAddr;
+
 use sha3::{Digest, Sha3_512};
 
 use crate::error::SecBindError;
@@ -7,6 +10,8 @@ pub struct RuntimeContext {
     pub binary_hash: String,
     pub env_label: String,
     pub binding_tag: Option<String>,
+    pub client_ip: Option<IpAddr>,
+    pub custom_tags: HashMap<String, String>,
 }
 
 impl RuntimeContext {
@@ -20,12 +25,23 @@ impl RuntimeContext {
         hasher.update(&exe_bytes);
         let hash_bytes = hasher.finalize();
         let binary_hash: String = hash_bytes.iter().map(|b| format!("{:02x}", b)).collect();
+        let client_ip = std::env::var("SECBIND_CLIENT_IP")
+            .ok()
+            .and_then(|val| val.parse::<IpAddr>().ok());
+        let mut custom_tags = HashMap::new();
+        for (key, value) in std::env::vars() {
+            if let Some(tag_key) = key.strip_prefix("SECBIND_TAG_") {
+                custom_tags.insert(tag_key.to_string(), value);
+            }
+        }
 
         Ok(RuntimeContext {
             machine_id,
             binary_hash,
             env_label: env_label.to_string(),
             binding_tag: None,
+            client_ip,
+            custom_tags,
         })
     }
 
