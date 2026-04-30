@@ -3,22 +3,44 @@ pub mod crypto;
 pub mod envelope;
 pub mod error;
 pub mod fingerprint;
+pub mod version;
 
-pub use crypto::{reveal, seal, SealedSecret, SealingKeypair};
+pub use crypto::{
+    reveal, reveal_for_version, seal, seal_for_version, SealedSecret, SealingKeypair,
+};
 pub use envelope::{Antigens, SecEnvFile};
 pub use error::SecBindError;
 pub use fingerprint::RuntimeContext;
+pub use version::{EnvelopeVersion, LATEST_ENVELOPE_VERSION};
+
+pub fn kem_secret_key_len_for_version(version: EnvelopeVersion) -> usize {
+    match version {
+        EnvelopeVersion::V1 => pqcrypto_kyber::kyber768::secret_key_bytes(),
+        EnvelopeVersion::V2 => pqcrypto_mlkem::mlkem768::secret_key_bytes(),
+    }
+}
+
+pub fn dsa_secret_key_len_for_version(version: EnvelopeVersion) -> usize {
+    match version {
+        EnvelopeVersion::V1 => pqcrypto_dilithium::dilithium3::secret_key_bytes(),
+        EnvelopeVersion::V2 => pqcrypto_mldsa::mldsa65::secret_key_bytes(),
+    }
+}
+
+pub fn combined_secret_key_len_for_version(version: EnvelopeVersion) -> usize {
+    kem_secret_key_len_for_version(version) + dsa_secret_key_len_for_version(version)
+}
 
 pub fn kem_secret_key_len() -> usize {
-    pqcrypto_mlkem::mlkem768::secret_key_bytes()
+    kem_secret_key_len_for_version(LATEST_ENVELOPE_VERSION)
 }
 
 pub fn dsa_secret_key_len() -> usize {
-    pqcrypto_mldsa::mldsa65::secret_key_bytes()
+    dsa_secret_key_len_for_version(LATEST_ENVELOPE_VERSION)
 }
 
 pub fn combined_secret_key_len() -> usize {
-    kem_secret_key_len() + dsa_secret_key_len()
+    combined_secret_key_len_for_version(LATEST_ENVELOPE_VERSION)
 }
 
 #[cfg(test)]
@@ -46,6 +68,20 @@ mod tests {
         let plaintext = b"super-secret-value";
         let sealed = seal(plaintext, &pk_bytes, &fp).unwrap();
         let revealed = reveal(&sealed, kem_sk, &fp).unwrap();
+        assert_eq!(revealed, plaintext);
+    }
+
+    #[test]
+    fn v1_seal_and_reveal_roundtrip() {
+        let ctx = make_ctx("test");
+        let (file, combined_sk) = SecEnvFile::new_for_version("test", None, EnvelopeVersion::V1);
+        let kem_len = kem_secret_key_len_for_version(EnvelopeVersion::V1);
+        let kem_sk = &combined_sk[..kem_len];
+        let pk_bytes = STANDARD.decode(&file.sealing_public_key).unwrap();
+        let fp = ctx.digest();
+        let plaintext = b"legacy-secret-value";
+        let sealed = seal_for_version(EnvelopeVersion::V1, plaintext, &pk_bytes, &fp).unwrap();
+        let revealed = reveal_for_version(EnvelopeVersion::V1, &sealed, kem_sk, &fp).unwrap();
         assert_eq!(revealed, plaintext);
     }
 

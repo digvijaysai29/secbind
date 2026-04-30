@@ -11,8 +11,7 @@ pub struct RuntimeContext {
 
 impl RuntimeContext {
     pub fn capture(env_label: &str) -> Result<Self, SecBindError> {
-        let machine_id = machine_uid::get()
-            .map_err(|e| SecBindError::KemError(e.to_string()))?;
+        let machine_id = machine_uid::get().map_err(|e| SecBindError::KemError(e.to_string()))?;
 
         let exe_path = std::env::current_exe()?;
         let exe_bytes = std::fs::read(&exe_path)?;

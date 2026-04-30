@@ -57,6 +57,17 @@ secbind seal -k DATABASE_URL -v "postgres://user:pass@db/prod" --env prod
 secbind run --env prod -- node server.js
 ```
 
+## v1 to v2 Migration
+
+If you already have a legacy `version: "1"` `.secenv`, migrate it in place:
+
+```bash
+secbind migrate --env prod --file .secenv
+```
+
+The migration decrypts secrets in memory, re-seals with v2 crypto, re-signs the envelope,
+and rotates key material in your OS keychain.
+
 ## dotenv Migration
 
 Before (`.env`):
@@ -173,7 +184,7 @@ Inspect a `.secenv` file without loading any key material:
 
 ```bash
 secbind audit --file .secenv
-# Version:       1
+# Version:       2
 # Environment:   prod
 # Secrets:       3
 # Expires:       2026-12-31T00:00:00Z

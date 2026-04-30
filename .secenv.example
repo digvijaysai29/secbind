@@ -1,5 +1,5 @@
 {
-  "version": "1",
+  "version": "2",
   "env_label": "example",
   "sealing_public_key": "<base64-encoded ML-KEM-768 public key (1184 bytes)>",
   "verify_key": "<base64-encoded ML-DSA-65 verify key (1952 bytes)>",

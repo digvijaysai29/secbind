@@ -5,7 +5,9 @@ use secbind_core::{RuntimeContext, SealingKeypair, SecEnvFile};
 use std::path::PathBuf;
 use zeroize::Zeroize;
 
-use crate::config::{default_secenv_path, keyring_service, split_combined_sk, KEYRING_USER};
+use crate::config::{
+    default_secenv_path, keyring_service, split_combined_sk_for_version, KEYRING_USER,
+};
 
 #[derive(Args)]
 pub struct SealArgs {
@@ -22,13 +24,14 @@ pub struct SealArgs {
 pub fn run(args: SealArgs) -> Result<(), Box<dyn std::error::Error>> {
     let path = default_secenv_path(args.file);
     let mut file = SecEnvFile::load(&path)?;
+    let version = file.envelope_version()?;
 
     file.verify_signature()?;
 
     let entry = Entry::new(&keyring_service(&args.env), KEYRING_USER)?;
     let sk_b64 = entry.get_password()?;
     let mut combined_sk = STANDARD.decode(&sk_b64)?;
-    let (kem_sk, dsa_sk) = split_combined_sk(&combined_sk)?;
+    let (kem_sk, dsa_sk) = split_combined_sk_for_version(&combined_sk, version)?;
 
     let ctx = RuntimeContext::capture(&args.env)?;
 
